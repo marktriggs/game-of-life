@@ -24,7 +24,7 @@ gol.World = function (x, y) {
     this.height = y;
 
     this.state = gol.Utils.generateGrid(x, y, function () {
-        return (Math.random() <= 0.15) ? 1 : 0;
+        return (Math.random() <= 0.08) ? 1 : 0;
     });
 
     // Extra padding around our array to avoid needing a bunch of conditionals around the edges of the map
@@ -123,33 +123,51 @@ gol.Renderer = function (world, container, pixelSize) {
 
     this.canvas.width = this.world.width * this.pixelSize;
     this.canvas.height = this.world.height * this.pixelSize;
+
+    this.ctx = this.canvas.getContext('2d');
+    this.bitmap = this.ctx.createImageData(this.canvas.width, this.canvas.height);
+
+    this.fillRed = 66;
+    this.fillGreen = 31;
+    this.fillBlue = 255;
+    this.fillAlpha = 255;
 };
 
 
 gol.Renderer.prototype.render = function (changes) {
-    var world = this.world;
     var self = this;
 
-    var ctx = this.canvas.getContext('2d');
-
+    /* Mark dead pixels as transparent */
     changes.deaths.forEach(function (p) {
-        ctx.clearRect(p.x * self.pixelSize,
-                      p.y * self.pixelSize,
-                      self.pixelSize,
-                      self.pixelSize);
+        for (var offsetY = 0; offsetY < self.pixelSize; offsetY++) {
+            var bitmapY = ((p.y * self.pixelSize) + offsetY) * 4;
+
+            for (var offsetX = 0; offsetX < self.pixelSize; offsetX++) {
+                var bitmapX = ((p.x * self.pixelSize) + offsetX) * 4;
+
+                self.bitmap.data[(bitmapY * self.canvas.width) + bitmapX + 3] = 0;
+            }
+        }
     });
 
-    ctx.beginPath();
-    ctx.fillStyle = '#421FFF';
-
+    /* Fill living pixels */
     changes.births.forEach(function (p) {
-        ctx.rect(p.x * self.pixelSize,
-                 p.y * self.pixelSize,
-                 self.pixelSize,
-                 self.pixelSize);
+        for (var offsetY = 0; offsetY < self.pixelSize; offsetY++) {
+            var bitmapY = ((p.y * self.pixelSize) + offsetY) * 4;
+
+            for (var offsetX = 0; offsetX < self.pixelSize; offsetX++) {
+                var bitmapX = ((p.x * self.pixelSize) + offsetX) * 4;
+                var baseIdx = (bitmapY * self.canvas.width) + bitmapX;
+
+                self.bitmap.data[baseIdx + 0] = self.fillRed;
+                self.bitmap.data[baseIdx + 1] = self.fillGreen;
+                self.bitmap.data[baseIdx + 2] = self.fillBlue;
+                self.bitmap.data[baseIdx + 3] = self.fillAlpha;
+            }
+        }
     });
 
-    ctx.fill();
+    self.ctx.putImageData(self.bitmap, 0, 0);
 };
 
 
