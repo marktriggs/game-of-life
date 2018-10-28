@@ -174,10 +174,10 @@ gol.Renderer.prototype.render = function (changes) {
 window.onload = function () {
     var maxFPS = 30;
 
-    var pixelSize = 3;
+    var pixelSize = 2;
     var margin = pixelSize * 8;
-    var world = new gol.World(Math.floor((document.body.clientWidth - margin) / pixelSize),
-                              Math.floor((document.body.clientHeight - margin) / pixelSize));
+    var world = new gol.World(Math.floor((document.body.offsetWidth - margin) / pixelSize),
+                              Math.floor((document.body.offsetHeight - margin) / pixelSize));
 
     var renderer = new gol.Renderer(world,
                                     document.getElementById("game-of-life"),
