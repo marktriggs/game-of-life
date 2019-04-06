@@ -1,7 +1,19 @@
 /* jshint esversion: 6 */
 
+interface Point {
+    x: number;
+    y: number;
+}
+
 class World {
-    constructor(x, y) {
+    private age: number;
+    private state: number[][];
+    private neighbourCounts: number[][];
+
+    public width: number;
+    public height: number;
+
+    constructor(x: number, y: number) {
         this.age = 0;
         this.width = x;
         this.height = y;
@@ -16,7 +28,7 @@ class World {
         this.initNeighbourCounts();
     }
 
-    generateGrid(width, height, valuefn) {
+    generateGrid(width: number, height: number, valuefn: () => number) {
         const result = new Array(height);
 
         for (let y = 0; y < height; y++) {
@@ -29,7 +41,7 @@ class World {
         return result;
     }
 
-    incrementNeighbours(x, y, increment) {
+    incrementNeighbours(x: number, y: number, increment: number) {
         // adjust for our padding
         x += 1;
         y += 1;
@@ -54,21 +66,21 @@ class World {
         }
     }
 
-    neighbourCount(x, y) {
+    neighbourCount(x: number, y: number): number {
         return this.neighbourCounts[y + 1][x + 1];
     }
 
-    giveLife(p) {
+    giveLife(p: Point) {
         this.incrementNeighbours(p.x, p.y, 1);
         this.state[p.y][p.x] = this.age + 1;
     }
 
-    takeLife(p) {
+    takeLife(p: Point) {
         this.incrementNeighbours(p.x, p.y, -1);
         this.state[p.y][p.x] = 0;
     }
 
-    isAlive(x, y) {
+    isAlive(x: number, y: number) {
         return !!this.state[y][x];
     }
 
@@ -101,29 +113,42 @@ class World {
 }
 
 
+interface WorldChanges {
+    births: Point[];
+    deaths: Point[];
+}
+
+
 class Renderer {
-    constructor(world, container, pixelSize) {
+    private world: World;
+    private container: HTMLElement;
+    private pixelSize: number;
+    private canvas: HTMLCanvasElement;
+    private ctx: CanvasRenderingContext2D;
+    private bitmap: ImageData;
+
+    static readonly fillRed = 66;
+    static readonly fillGreen = 31;
+    static readonly fillBlue = 255;
+    static readonly fillAlpha = 255;
+
+    constructor(world: World, container: HTMLElement, pixelSize: number) {
         this.world = world;
         this.container = container;
         this.pixelSize = pixelSize;
 
         this.container.innerHTML = '<canvas class="game-of-life-canvas"></canvas>';
-        this.canvas = this.container.querySelector('.game-of-life-canvas');
+        this.canvas = this.container.querySelector('.game-of-life-canvas') as HTMLCanvasElement;
 
         this.canvas.width = this.world.width * this.pixelSize;
         this.canvas.height = this.world.height * this.pixelSize;
 
-        this.ctx = this.canvas.getContext('2d');
+        this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
         this.bitmap = this.ctx.createImageData(this.canvas.width, this.canvas.height);
-
-        this.fillRed = 66;
-        this.fillGreen = 31;
-        this.fillBlue = 255;
-        this.fillAlpha = 255;
     }
 
 
-    render(changes) {
+    render(changes: WorldChanges) {
         /* Mark dead pixels as transparent */
         for (const p of changes.deaths) {
             for (let offsetY = 0; offsetY < this.pixelSize; offsetY++) {
@@ -146,10 +171,10 @@ class Renderer {
                     const bitmapX = ((p.x * this.pixelSize) + offsetX) * 4;
                     const baseIdx = (bitmapY * this.canvas.width) + bitmapX;
 
-                    this.bitmap.data[baseIdx + 0] = this.fillRed;
-                    this.bitmap.data[baseIdx + 1] = this.fillGreen;
-                    this.bitmap.data[baseIdx + 2] = this.fillBlue;
-                    this.bitmap.data[baseIdx + 3] = this.fillAlpha;
+                    this.bitmap.data[baseIdx + 0] = Renderer.fillRed;
+                    this.bitmap.data[baseIdx + 1] = Renderer.fillGreen;
+                    this.bitmap.data[baseIdx + 2] = Renderer.fillBlue;
+                    this.bitmap.data[baseIdx + 3] = Renderer.fillAlpha;
                 }
             }
         }
@@ -167,7 +192,7 @@ window.onload = () => {
                             Math.floor((document.body.offsetHeight - margin) / pixelSize));
 
     const renderer = new Renderer(world,
-                                  document.getElementById("game-of-life"),
+                                  document.getElementById("game-of-life") as HTMLElement,
                                   pixelSize);
     let lastTick = 0;
     const msPerFrame = (1000.0 / maxFPS);
