@@ -1,44 +1,53 @@
 /* jshint esversion: 6 */
 
-interface Point {
-    x: number;
-    y: number;
+class Grid {
+    private grid: Uint8Array;
+    private width: number;
+    private height: number;
+
+    constructor(width: number, height: number, valuefn: () => number) {
+        this.width = width;
+        this.height = height;
+        this.grid = new Uint8Array(width * height);
+
+        for (var i = 0; i < this.grid.length; i++) {
+            this.grid[i] = valuefn();
+        }
+    }
+
+    get(x: number, y: number): number {
+        return this.grid[(y * this.width) + x];
+    }
+
+    set(x: number, y: number, value: number) {
+        this.grid[(y * this.width) + x] = value;
+    }
+
+    increment(x: number, y: number, offset: number) {
+        this.grid[(y * this.width) + x] += offset;
+    }
 }
 
+
 class World {
-    private age: number;
-    private state: number[][];
-    private neighbourCounts: number[][];
+    private state: Grid;
+    private neighbourCounts: Grid;
 
     public width: number;
     public height: number;
 
     constructor(x: number, y: number) {
-        this.age = 0;
         this.width = x;
         this.height = y;
 
-        this.state = this.generateGrid(x, y, () => {
+        this.state = new Grid(x, y, () => {
             return (Math.random() <= 0.08) ? 1 : 0;
         });
 
         // Extra padding around our array to avoid needing a bunch of conditionals around the edges of the map
-        this.neighbourCounts = this.generateGrid(this.width + 2, this.height + 2, () => { return 0; });
+        this.neighbourCounts = new Grid(this.width + 2, this.height + 2, () => { return 0; });
 
         this.initNeighbourCounts();
-    }
-
-    generateGrid(width: number, height: number, valuefn: () => number) {
-        const result = new Array(height);
-
-        for (let y = 0; y < height; y++) {
-            result[y] = new Array(width);
-            for (let x = 0; x < width; x++) {
-                result[y][x] = valuefn();
-            }
-        }
-
-        return result;
     }
 
     incrementNeighbours(x: number, y: number, increment: number) {
@@ -46,14 +55,14 @@ class World {
         x += 1;
         y += 1;
 
-        this.neighbourCounts[y - 1][x - 1] += increment;
-        this.neighbourCounts[y - 1][x + 1] += increment;
-        this.neighbourCounts[y + 1][x - 1] += increment;
-        this.neighbourCounts[y + 1][x + 1] += increment;
-        this.neighbourCounts[y - 1][x] += increment;
-        this.neighbourCounts[y + 1][x] += increment;
-        this.neighbourCounts[y][x - 1] += increment;
-        this.neighbourCounts[y][x + 1] += increment;
+        this.neighbourCounts.increment(x - 1, y - 1, increment);
+        this.neighbourCounts.increment(x + 1, y - 1, increment);
+        this.neighbourCounts.increment(x - 1, y + 1, increment);
+        this.neighbourCounts.increment(x + 1, y + 1, increment);
+        this.neighbourCounts.increment(x, y - 1, increment);
+        this.neighbourCounts.increment(x, y + 1, increment);
+        this.neighbourCounts.increment(x - 1, y, increment);
+        this.neighbourCounts.increment(x + 1, y, increment);
     }
 
     initNeighbourCounts() {
@@ -67,55 +76,86 @@ class World {
     }
 
     neighbourCount(x: number, y: number): number {
-        return this.neighbourCounts[y + 1][x + 1];
+        return this.neighbourCounts.get(x + 1, y + 1);
     }
 
-    giveLife(p: Point) {
-        this.incrementNeighbours(p.x, p.y, 1);
-        this.state[p.y][p.x] = this.age + 1;
+    giveLife(x: number, y: number) {
+        this.incrementNeighbours(x, y, 1);
+        this.state.set(x, y, 1);
     }
 
-    takeLife(p: Point) {
-        this.incrementNeighbours(p.x, p.y, -1);
-        this.state[p.y][p.x] = 0;
+    takeLife(x: number, y: number) {
+        this.incrementNeighbours(x, y, -1);
+        this.state.set(x, y, 0);
     }
 
     isAlive(x: number, y: number) {
-        return !!this.state[y][x];
+        return !!this.state.get(x, y);
     }
 
-    tick() {
-        const living = [];
-        const dead = [];
+    tick(changes: WorldChanges) {
+        changes.clear();
 
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
                 const neighbourCount = this.neighbourCount(x, y);
 
                 if (this.isAlive(x, y) && (neighbourCount < 2 || neighbourCount > 3)) {
-                    dead.push({x: x, y: y});
+                    changes.deaths.push(x, y);
                 } else if (!this.isAlive(x, y) && (neighbourCount == 3)) {
-                    living.push({x: x, y: y});
+                    changes.births.push(x, y);
                 }
             }
         }
 
-        living.forEach(this.giveLife, this);
-        dead.forEach(this.takeLife, this);
-
-        this.age++;
-
-        return {
-            births: living,
-            deaths: dead,
-        };
+        changes.deaths.forEach((x, y) => { this.takeLife(x, y) });
+        changes.births.forEach((x, y) => { this.giveLife(x, y) });
     }
 }
 
 
-interface WorldChanges {
-    births: Point[];
-    deaths: Point[];
+class PointSet {
+    private xs: Uint16Array;
+    private ys: Uint16Array;
+    private idx: number;
+
+    constructor(size: number) {
+        this.xs = new Uint16Array(size);
+        this.ys = new Uint16Array(size);
+        this.idx = 0;
+    }
+
+    push(x: number, y: number) {
+        this.xs[this.idx] = x;
+        this.ys[this.idx] = y;
+
+        this.idx += 1;
+    }
+
+    clear() {
+        this.idx = 0;
+    }
+
+    forEach(fn: (x: number, y: number) => void) {
+        for (var i = 0; i < this.idx; i++) {
+            fn(this.xs[i], this.ys[i]);
+        }
+    }
+}
+
+class WorldChanges {
+    public births: PointSet;
+    public deaths: PointSet;
+
+    constructor(width: number, height: number) {
+        this.births = new PointSet(width * height);
+        this.deaths = new PointSet(width * height);
+    }
+
+    public clear() {
+        this.births.clear();
+        this.deaths.clear();
+    }
 }
 
 
@@ -164,26 +204,25 @@ class Renderer {
     }
 
     render(changes: WorldChanges) {
-        /* Mark dead pixels as transparent */
-        for (const p of changes.deaths) {
+        changes.deaths.forEach((x: number, y: number) => {
             for (let offsetY = 0; offsetY < this.pixelSize; offsetY++) {
-                const bitmapY = ((p.y * this.pixelSize) + offsetY) * 4;
+                const bitmapY = ((y * this.pixelSize) + offsetY) * 4;
 
                 for (let offsetX = 0; offsetX < this.pixelSize; offsetX++) {
-                    const bitmapX = ((p.x * this.pixelSize) + offsetX) * 4;
+                    const bitmapX = ((x * this.pixelSize) + offsetX) * 4;
 
                     this.bitmap.data[(bitmapY * this.canvas.width) + bitmapX + 3] = 0;
                 }
             }
-        }
+        });
 
         /* Fill living pixels */
-        for (const p of changes.births) {
+        changes.births.forEach((x: number, y: number) => {
             for (let offsetY = 0; offsetY < this.pixelSize; offsetY++) {
-                const bitmapY = ((p.y * this.pixelSize) + offsetY) * 4;
+                const bitmapY = ((y * this.pixelSize) + offsetY) * 4;
 
                 for (let offsetX = 0; offsetX < this.pixelSize; offsetX++) {
-                    const bitmapX = ((p.x * this.pixelSize) + offsetX) * 4;
+                    const bitmapX = ((x * this.pixelSize) + offsetX) * 4;
                     const baseIdx = (bitmapY * this.canvas.width) + bitmapX;
 
                     this.bitmap.data[baseIdx + 0] = Renderer.fillRed;
@@ -192,7 +231,7 @@ class Renderer {
                     this.bitmap.data[baseIdx + 3] = Renderer.fillAlpha;
                 }
             }
-        }
+        });
 
         this.ctx.putImageData(this.bitmap, 0, 0);
 
@@ -203,7 +242,7 @@ class Renderer {
 }
 
 window.onload = () => {
-    const debug = true;
+    const debug = false;
     const maxFPS = debug ? 99999 : 30;
 
     const pixelSize = 2;
@@ -223,6 +262,8 @@ window.onload = () => {
     let fpsStart = Date.now();
     let fpsCount = 0;
 
+    let changes = new WorldChanges(world.width, world.height);
+
     let ticker = () => {
         requestAnimationFrame(ticker);
 
@@ -234,10 +275,10 @@ window.onload = () => {
 
             lastTick = now - (delta % msPerFrame);
 
-            const changes = world.tick();
+            world.tick(changes);
             renderer.render(changes);
 
-            if (fpsCount === 100) {
+            if (fpsCount === 200) {
                 renderer.setFPS(fpsCount / ((now - fpsStart) / 1000.0));
                 fpsCount = 0;
                 fpsStart = now;
