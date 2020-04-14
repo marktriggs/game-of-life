@@ -245,7 +245,7 @@ window.onload = () => {
     const debug = false;
     const maxFPS = debug ? 99999 : 30;
 
-    const pixelSize = 2;
+    const pixelSize = 1;
     const margin = pixelSize * 8;
     const world = new World(Math.floor((document.body.offsetWidth - margin) / pixelSize),
                             Math.floor((document.body.offsetHeight - margin) / pixelSize));
