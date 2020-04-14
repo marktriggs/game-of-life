@@ -127,6 +127,9 @@ class Renderer {
     private ctx: CanvasRenderingContext2D;
     private bitmap: ImageData;
 
+    private debug: boolean;
+    private fps: number;
+
     static readonly fillRed = 66;
     static readonly fillGreen = 31;
     static readonly fillBlue = 255;
@@ -145,8 +148,20 @@ class Renderer {
 
         this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
         this.bitmap = this.ctx.createImageData(this.canvas.width, this.canvas.height);
+
+        this.ctx.font = '14px serif';
+        this.ctx.fillStyle = '#ff0000';
+
+        this.fps = 0;
     }
 
+    setDebug(val: boolean) {
+        this.debug = val;
+    }
+
+    setFPS(fps: number) {
+        this.fps = Math.round(fps);
+    }
 
     render(changes: WorldChanges) {
         /* Mark dead pixels as transparent */
@@ -180,11 +195,16 @@ class Renderer {
         }
 
         this.ctx.putImageData(this.bitmap, 0, 0);
+
+        if (this.debug) {
+            this.ctx.fillText(`FPS: ${this.fps}`, 10, 20);
+        }
     }
 }
 
 window.onload = () => {
-    const maxFPS = 30;
+    const debug = true;
+    const maxFPS = debug ? 99999 : 30;
 
     const pixelSize = 2;
     const margin = pixelSize * 8;
@@ -194,8 +214,14 @@ window.onload = () => {
     const renderer = new Renderer(world,
                                   document.getElementById("game-of-life") as HTMLElement,
                                   pixelSize);
+
+    renderer.setDebug(debug);
+
     let lastTick = 0;
     const msPerFrame = (1000.0 / maxFPS);
+
+    let fpsStart = Date.now();
+    let fpsCount = 0;
 
     let ticker = () => {
         requestAnimationFrame(ticker);
@@ -204,10 +230,18 @@ window.onload = () => {
         const delta = now - lastTick;
 
         if (delta >= msPerFrame) {
+            fpsCount += 1;
+
             lastTick = now - (delta % msPerFrame);
 
             const changes = world.tick();
             renderer.render(changes);
+
+            if (fpsCount === 100) {
+                renderer.setFPS(fpsCount / ((now - fpsStart) / 1000.0));
+                fpsCount = 0;
+                fpsStart = now;
+            }
         }
     };
 
