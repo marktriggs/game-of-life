@@ -189,6 +189,25 @@ class Renderer {
         this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D;
         this.bitmap = this.ctx.createImageData(this.canvas.width, this.canvas.height);
 
+        // Init all pixels to the right colour but full transparency
+        for (let y = 0; y < this.world.height; y++) {
+            for (let x = 0; x < this.world.width; x++) {
+                for (let offsetY = 0; offsetY < this.pixelSize; offsetY++) {
+                    const bitmapY = ((y * this.pixelSize) + offsetY) * 4;
+
+                    for (let offsetX = 0; offsetX < this.pixelSize; offsetX++) {
+                        const bitmapX = ((x * this.pixelSize) + offsetX) * 4;
+                        const baseIdx = (bitmapY * this.canvas.width) + bitmapX;
+
+                        this.bitmap.data[baseIdx + 0] = Renderer.fillRed;
+                        this.bitmap.data[baseIdx + 1] = Renderer.fillGreen;
+                        this.bitmap.data[baseIdx + 2] = Renderer.fillBlue;
+                        this.bitmap.data[baseIdx + 3] = 0;
+                    }
+                }
+            }
+        }
+
         this.ctx.font = '14px serif';
         this.ctx.fillStyle = '#ff0000';
 
@@ -223,12 +242,8 @@ class Renderer {
 
                 for (let offsetX = 0; offsetX < this.pixelSize; offsetX++) {
                     const bitmapX = ((x * this.pixelSize) + offsetX) * 4;
-                    const baseIdx = (bitmapY * this.canvas.width) + bitmapX;
 
-                    this.bitmap.data[baseIdx + 0] = Renderer.fillRed;
-                    this.bitmap.data[baseIdx + 1] = Renderer.fillGreen;
-                    this.bitmap.data[baseIdx + 2] = Renderer.fillBlue;
-                    this.bitmap.data[baseIdx + 3] = Renderer.fillAlpha;
+                    this.bitmap.data[(bitmapY * this.canvas.width) + bitmapX + 3] = Renderer.fillAlpha;
                 }
             }
         });
