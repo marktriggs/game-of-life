@@ -3,11 +3,9 @@
 class Grid {
     private grid: Uint8Array;
     private width: number;
-    private height: number;
 
     constructor(width: number, height: number, valuefn: () => number) {
         this.width = width;
-        this.height = height;
         this.grid = new Uint8Array(width * height);
 
         for (var i = 0; i < this.grid.length; i++) {
@@ -167,7 +165,7 @@ class Renderer {
     private ctx: CanvasRenderingContext2D;
     private bitmap: ImageData;
 
-    private debug: boolean;
+    private debug: boolean = false;
     private fps: number;
 
     static readonly fillRed = 66;
