@@ -98,10 +98,14 @@ class World {
             for (let x = 0; x < this.width; x++) {
                 const neighbourCount = this.neighbourCount(x, y);
 
-                if (this.isAlive(x, y) && (neighbourCount < 2 || neighbourCount > 3)) {
-                    changes.deaths.push(x, y);
-                } else if (!this.isAlive(x, y) && (neighbourCount == 3)) {
-                    changes.births.push(x, y);
+                if (this.isAlive(x, y)) {
+                    if (neighbourCount !== 2 && neighbourCount !== 3) {
+                        changes.deaths.push(x, y);
+                    }
+                } else {
+                    if (neighbourCount === 3) {
+                        changes.births.push(x, y);
+                    }
                 }
             }
         }
