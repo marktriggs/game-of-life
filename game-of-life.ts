@@ -249,7 +249,9 @@ class Renderer {
                 }
             }
         });
+    }
 
+    blit() {
         this.ctx.putImageData(this.bitmap, 0, 0);
 
         if (this.debug) {
@@ -282,7 +284,7 @@ window.onload = () => {
     let changes = new WorldChanges(world.width, world.height);
 
     let ticker = () => {
-        requestAnimationFrame(ticker);
+        setTimeout(ticker);
 
         const now = Date.now();
         const delta = now - lastTick;
@@ -303,5 +305,12 @@ window.onload = () => {
         }
     };
 
-    requestAnimationFrame(ticker);
+
+    let blitter = () => {
+        requestAnimationFrame(blitter);
+        renderer.blit();
+    };
+
+    ticker();
+    blitter();
 };
